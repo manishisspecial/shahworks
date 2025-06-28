@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PeoplePulse HR - Employee Portal",
+  title: "PeoplePulse - Solutions for HR",
   description: "PeoplePulse HR: Modern HR solution for employee management, attendance, leave, and salary tracking",
 };
 
