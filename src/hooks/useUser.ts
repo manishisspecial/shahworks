@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import type { User, AuthChangeEvent, Session } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
 
 interface Company {
   id: string;
@@ -15,6 +15,19 @@ interface Company {
   logo_url: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface AdminUser {
+  id: string;
+  company_name: string;
+  admin_name: string;
+  admin_email: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  website: string;
+  logo_url: string | null;
 }
 
 export interface UserProfile {
@@ -37,75 +50,40 @@ export interface UserProfile {
 
 export function useUser() {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<'admin' | 'employee' | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const [company, setCompany] = useState<Company | null>(null);
+  const [company, setCompany] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user ?? null);
-      if (user) {
-        const { data: userRole } = await supabase
-          .from('user_roles')
-          .select('company_id, role')
-          .eq('user_id', user.id)
+      let localCompanyId = null;
+      if (typeof window !== "undefined") {
+        localCompanyId = localStorage.getItem("company_id");
+      }
+      setCompanyId(localCompanyId);
+      if (localCompanyId) {
+        const { data: adminUser } = await supabase
+          .from('admin_user')
+          .select('*')
+          .eq('id', localCompanyId)
           .single();
-        setRole(userRole?.role ?? null);
-        setCompanyId(userRole?.company_id ?? null);
-        if (userRole?.company_id) {
-          const { data: company } = await supabase
-            .from('companies')
-            .select('*')
-            .eq('id', userRole.company_id)
-            .single();
-          setCompany(company ?? null);
+        setCompany(adminUser ?? null);
+        if (user && adminUser && user.email === adminUser.admin_email) {
+          setRole('admin');
         } else {
-          setCompany(null);
+          setRole('employee');
         }
       } else {
-        setRole(null);
-        setCompanyId(null);
         setCompany(null);
+        setRole(null);
       }
       setLoading(false);
     };
     fetchUser();
-    const { data: listener } = supabase.auth.onAuthStateChange((
-      _event: AuthChangeEvent,
-      session: Session | null
-    ) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        supabase
-          .from('user_roles')
-          .select('company_id, role')
-          .eq('user_id', session.user.id)
-          .single()
-          .then(async ({ data: userRole }) => {
-            setRole(userRole?.role ?? null);
-            setCompanyId(userRole?.company_id ?? null);
-            if (userRole?.company_id) {
-              const { data: company } = await supabase
-                .from('companies')
-                .select('*')
-                .eq('id', userRole.company_id)
-                .single();
-              setCompany(company ?? null);
-            } else {
-              setCompany(null);
-            }
-          });
-      } else {
-        setRole(null);
-        setCompanyId(null);
-        setCompany(null);
-      }
-    });
-    return () => {
-      listener.subscription.unsubscribe();
-    };
+    // No need for auth state change for company info
   }, []);
 
   return { user, role, companyId, company, loading };

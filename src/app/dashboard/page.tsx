@@ -110,6 +110,17 @@ export default function DashboardPage() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
+  if (!company) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="text-red-600 text-lg mb-4">Your organization is missing. Please complete onboarding or contact support.</div>
+        <Link href="/onboarding">
+          <button className="bg-blue-600 text-white px-6 py-2 rounded-md font-semibold">Complete Onboarding</button>
+        </Link>
+      </div>
+    );
+  }
+
   // Widget add/remove logic
   const handleAddWidget = (key: string) => {
     setWidgets((prev) => (prev.includes(key) ? prev : [...prev, key]));
@@ -273,7 +284,7 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
-          {company && <div className="text-center text-lg text-gray-600 mb-6">{company.name}</div>}
+          {company && <div className="text-center text-lg text-gray-600 mb-6">{company.company_name}</div>}
           <Modal isOpen={showAddWidget} onClose={() => setShowAddWidget(false)} title="Add Widget">
             <div className="space-y-4">
               {availableWidgets.length === 0 ? (

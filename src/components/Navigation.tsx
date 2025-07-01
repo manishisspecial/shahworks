@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/hooks/useUser";
 import { supabase } from "@/lib/supabaseClient";
 import { useState, useRef, useEffect } from "react";
-import { FiUser, FiLogOut, FiUsers } from "react-icons/fi";
+import { FiUser, FiLogOut } from "react-icons/fi";
 
 export default function Navigation() {
   const { user, role } = useUser();
@@ -30,6 +30,16 @@ export default function Navigation() {
     };
   }, [accountOpen]);
 
+  // Add a state to force re-render on auth change
+  useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      router.refresh();
+    });
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, [router]);
+
   // Navigation links
   const navLinks = (
     <>
@@ -53,55 +63,79 @@ export default function Navigation() {
           >Login</button>
         </>
       )}
-      {user && (
+      {user && role === 'admin' && !!user.email && (
+        <>
+          <button
+            onMouseDown={() => { setDrawerOpen(false); router.push("/admin/dashboard"); }}
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+          >Admin Dashboard</button>
+          <button
+            onMouseDown={() => { setDrawerOpen(false); router.push("/admin/organizations"); }}
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+          >Manage Employees</button>
+          <button
+            onMouseDown={() => { setDrawerOpen(false); router.push("/admin/leave-requests"); }}
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+          >Leave Requests</button>
+          <button
+            onMouseDown={() => { setDrawerOpen(false); router.push("/admin/salary-generate"); }}
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+          >Salary Generation</button>
+          <button
+            onMouseDown={() => { setDrawerOpen(false); router.push("/admin/reports"); }}
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+          >Reports</button>
+        </>
+      )}
+      {user && role === 'employee' && !!user.email && (
         <>
           <button
             onMouseDown={() => { setDrawerOpen(false); router.push("/dashboard"); }}
             className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
           >Dashboard</button>
-          <div className="relative" ref={accountRef} style={{zIndex: 60}}>
-            <button
-              onClick={() => setAccountOpen((v) => !v)}
-              className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-haspopup="true"
-              aria-expanded={accountOpen}
-              tabIndex={0}
-            >
-              <span className="inline-block w-8 h-8 bg-blue-100 rounded-full border-2 border-blue-300 flex items-center justify-center font-bold text-blue-600 shadow-sm text-lg" style={{fontSize: '1.25rem', lineHeight: 1}}>
-                {user.email?.[0]?.toUpperCase() || "A"}
-              </span>
-              <span className="hidden sm:inline">My Account</span>
-              <svg className={`w-4 h-4 ml-1 transition-transform ${accountOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-            </button>
-            {accountOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 animate-fade-in overflow-hidden backdrop-blur-sm" style={{boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)', zIndex: 60}}>
-                <button
-                  onMouseDown={() => { setAccountOpen(false); setDrawerOpen(false); router.push("/profile"); }}
-                  className="flex items-center gap-2 w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 transition bg-transparent border-none"
-                  tabIndex={0}
-                >
-                  <FiUser className="text-blue-600" /> Profile
-                </button>
-                {role === 'admin' && (
-                  <button
-                    onMouseDown={() => { setAccountOpen(false); setDrawerOpen(false); router.push("/admin/organizations"); }}
-                    className="flex items-center gap-2 w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 transition bg-transparent border-none"
-                    tabIndex={0}
-                  >
-                    <FiUsers className="text-blue-600" /> Admin: Organizations
-                  </button>
-                )}
-                <button
-                  onMouseDown={async () => { setAccountOpen(false); setDrawerOpen(false); await supabase.auth.signOut(); router.push("/login"); }}
-                  className="flex items-center gap-2 w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition border-t border-gray-100 bg-transparent border-none"
-                  tabIndex={0}
-                >
-                  <FiLogOut /> Logout
-                </button>
-              </div>
-            )}
-          </div>
         </>
+      )}
+      {user && !!user.email && (
+        <div className="relative" ref={accountRef} style={{zIndex: 60}}>
+          <button
+            onClick={() => setAccountOpen((v) => !v)}
+            className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-haspopup="true"
+            aria-expanded={accountOpen}
+            tabIndex={0}
+          >
+            <span className="inline-block w-10 h-10 rounded-full border-2 border-blue-300 flex items-center justify-center font-bold text-white shadow-lg"
+              style={{
+                fontSize: '1.25rem',
+                lineHeight: 1,
+                background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                boxShadow: '0 4px 16px 0 rgba(59, 130, 246, 0.15)',
+              }}
+            >
+              {user.email?.[0]?.toUpperCase() || "A"}
+            </span>
+            <span className="hidden sm:inline">My Account</span>
+            <svg className={`w-4 h-4 ml-1 transition-transform ${accountOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          {accountOpen && (
+            <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 animate-fade-in overflow-hidden backdrop-blur-sm" style={{boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)', zIndex: 60}}>
+              <button
+                onMouseDown={() => { setAccountOpen(false); setDrawerOpen(false); router.push("/profile"); }}
+                className="flex items-center gap-2 w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 transition bg-transparent border-none"
+                tabIndex={0}
+              >
+                <FiUser className="text-blue-600" /> Profile
+              </button>
+              <button
+                onMouseDown={async () => { setAccountOpen(false); setDrawerOpen(false); await supabase.auth.signOut(); router.push("/login"); }}
+                className="flex items-center gap-2 w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition border-t border-gray-100 bg-transparent border-none"
+                tabIndex={0}
+              >
+                <FiLogOut /> Logout
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </>
   );

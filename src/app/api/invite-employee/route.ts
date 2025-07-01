@@ -11,77 +11,50 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
-      first_name, last_name, email, department, position, employee_id,
-      role, manager_id, hire_date, salary, phone, address, company_id
+      name,
+      email,
+      position,
+      department,
+      date_of_joining,
+      salary,
+      is_admin,
+      company_id
     } = body;
 
     if (!company_id) {
       return NextResponse.json({ error: 'Missing company_id.' }, { status: 400 });
     }
-
-    // Check if user already exists
-    const { data: existingUser } = await supabase.auth.admin.listUsers();
-    const userExists = existingUser?.users?.some(user => user.email === email);
-    
-    if (userExists) {
-      return NextResponse.json({ error: 'User with this email already exists.' }, { status: 400 });
+    if (!name || !email) {
+      return NextResponse.json({ error: 'Name and email are required.' }, { status: 400 });
     }
 
-    // 1. Create user in Supabase Auth (no invite email)
-    const tempPassword = Math.random().toString(36).slice(-10) + 'Aa1!';
-    const { data: user, error: userError } = await supabase.auth.admin.createUser({
-      email,
-      password: tempPassword,
-      email_confirm: true // Auto-confirm for demo purposes
-    });
-    
-    if (userError || !user?.user?.id) {
-      return NextResponse.json({ 
-        error: userError?.message || 'Failed to create user.' 
-      }, { status: 500 });
+    // Check if employee already exists
+    const { data: existingEmp } = await supabase
+      .from('employee')
+      .select('id')
+      .eq('email', email)
+      .eq('company_id', company_id)
+      .single();
+    if (existingEmp) {
+      return NextResponse.json({ error: 'Employee with this email already exists.' }, { status: 400 });
     }
-    
-    const user_id = user.user.id;
 
-    // 2. Insert into user_profiles
-    const { error: profileError } = await supabase.from('user_profiles').insert({
-      id: user_id,
+    // Insert into employee table
+    const { error: empError } = await supabase.from('employee').insert({
+      company_id,
+      name,
       email,
-      first_name,
-      last_name,
-      employee_id,
-      department,
       position,
-      hire_date,
-      salary,
-      role,
-      manager_id: manager_id || null,
-      phone,
-      address,
-      company_id
+      department,
+      date_of_joining,
+      salary: salary ? parseFloat(salary) : null,
+      is_admin: !!is_admin,
     });
-    
-    if (profileError) {
-      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    if (empError) {
+      return NextResponse.json({ error: empError.message }, { status: 500 });
     }
 
-    // 3. Create initial leave balance
-    const currentYear = new Date().getFullYear();
-    await supabase.from('leave_balance').insert({
-      user_id,
-      year: currentYear
-    });
-
-    // 4. Send welcome email (simplified version without SendGrid for now)
-    // In production, you'd want to use SendGrid or another email service
-    console.log(`User ${email} created successfully with temporary password: ${tempPassword}`);
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Employee created successfully',
-      tempPassword: tempPassword // Remove this in production
-    });
-    
+    return NextResponse.json({ success: true, message: 'Employee added successfully' });
   } catch (err: unknown) {
     let message = 'Internal server error.';
     if (typeof err === 'object' && err !== null && 'message' in err && typeof (err as { message?: string }).message === 'string') {

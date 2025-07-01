@@ -32,6 +32,11 @@ CREATE TABLE IF NOT EXISTS public.companies (
     name TEXT NOT NULL,
     logo_url TEXT,
     address TEXT,
+    address_line1 TEXT,
+    address_line2 TEXT,
+    city TEXT,
+    state TEXT,
+    pincode TEXT,
     phone TEXT,
     email TEXT,
     website TEXT,
@@ -45,11 +50,11 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     email TEXT UNIQUE NOT NULL,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
-    employee_id TEXT UNIQUE NOT NULL,
-    department TEXT NOT NULL,
-    position TEXT NOT NULL,
-    hire_date DATE NOT NULL,
-    salary DECIMAL(10,2) NOT NULL,
+    employee_id TEXT UNIQUE,
+    department TEXT,
+    position TEXT,
+    hire_date DATE,
+    salary DECIMAL(10,2),
     role user_role DEFAULT 'employee',
     manager_id UUID REFERENCES public.user_profiles(id),
     company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE,
@@ -75,6 +80,54 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_name = 'user_profiles' AND column_name = 'address') THEN
         ALTER TABLE public.user_profiles ADD COLUMN address TEXT;
+    END IF;
+END $$;
+
+-- Add missing columns to companies table if they don't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'companies' AND column_name = 'address_line1') THEN
+        ALTER TABLE public.companies ADD COLUMN address_line1 TEXT;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'companies' AND column_name = 'address_line2') THEN
+        ALTER TABLE public.companies ADD COLUMN address_line2 TEXT;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'companies' AND column_name = 'city') THEN
+        ALTER TABLE public.companies ADD COLUMN city TEXT;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'companies' AND column_name = 'state') THEN
+        ALTER TABLE public.companies ADD COLUMN state TEXT;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'companies' AND column_name = 'pincode') THEN
+        ALTER TABLE public.companies ADD COLUMN pincode TEXT;
+    END IF;
+END $$;
+
+-- Add missing columns to user_profiles table if they don't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'user_profiles' AND column_name = 'department') THEN
+        ALTER TABLE public.user_profiles ADD COLUMN department TEXT;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'user_profiles' AND column_name = 'position') THEN
+        ALTER TABLE public.user_profiles ADD COLUMN position TEXT;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'user_profiles' AND column_name = 'salary') THEN
+        ALTER TABLE public.user_profiles ADD COLUMN salary DECIMAL(10,2);
     END IF;
 END $$;
 
@@ -432,5 +485,32 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'calculate_attendance_hours') THEN
         CREATE TRIGGER calculate_attendance_hours BEFORE INSERT OR UPDATE ON public.attendance FOR EACH ROW EXECUTE FUNCTION calculate_total_hours();
+    END IF;
+END $$;
+
+-- Notifications table for in-app notifications
+CREATE TABLE IF NOT EXISTS notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  recipient_employee_id uuid REFERENCES employee(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  message text NOT NULL,
+  is_read boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+-- Create admin_user table if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'admin_user') THEN
+        CREATE TABLE admin_user (
+            id SERIAL PRIMARY KEY,
+            company_name TEXT NOT NULL,
+            admin_name TEXT NOT NULL,
+            admin_email TEXT NOT NULL,
+            logo_url TEXT
+        );
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_user' AND column_name = 'logo_url') THEN
+        ALTER TABLE admin_user ADD COLUMN logo_url TEXT;
     END IF;
 END $$; 

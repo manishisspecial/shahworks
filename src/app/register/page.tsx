@@ -82,6 +82,9 @@ export default function RegisterPage() {
       if (data.user) {
         setMessage("Registration successful! Please check your email to verify your account.");
         setSnackbar({open: true, message: "Registration successful! Please check your email to verify your account.", severity: 'success'});
+        if (typeof window !== "undefined") {
+          localStorage.setItem("admin_email", form.email);
+        }
       }
     } catch (err: unknown) {
       const error = err as DatabaseError;
