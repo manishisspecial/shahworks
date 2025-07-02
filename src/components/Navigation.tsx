@@ -7,7 +7,7 @@ import { useState, useRef, useEffect } from "react";
 import { FiUser, FiLogOut } from "react-icons/fi";
 
 export default function Navigation() {
-  const { user, role } = useUser();
+  const { user, role, loading } = useUser();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -40,6 +40,15 @@ export default function Navigation() {
     };
   }, [router]);
 
+  // Show loading spinner while user state is loading
+  if (loading) {
+    return (
+      <nav className="bg-white shadow-md sticky top-0 z-50 h-16 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600" />
+      </nav>
+    );
+  }
+
   // Navigation links
   const navLinks = (
     <>
@@ -47,19 +56,19 @@ export default function Navigation() {
         <>
           <button
             onMouseDown={() => { setDrawerOpen(false); router.push("/"); }}
-            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left transition-colors"
           >Home</button>
           <button
             onMouseDown={() => { setDrawerOpen(false); }}
-            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left transition-colors"
           >Features</button>
           <button
             onMouseDown={() => { setDrawerOpen(false); router.push("/register"); }}
-            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left transition-colors"
           >Register</button>
           <button
             onMouseDown={() => { setDrawerOpen(false); router.push("/login"); }}
-            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left transition-colors"
           >Login</button>
         </>
       )}
@@ -67,23 +76,23 @@ export default function Navigation() {
         <>
           <button
             onMouseDown={() => { setDrawerOpen(false); router.push("/admin/dashboard"); }}
-            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left transition-colors"
           >Admin Dashboard</button>
           <button
             onMouseDown={() => { setDrawerOpen(false); router.push("/admin/organizations"); }}
-            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left transition-colors"
           >Manage Employees</button>
           <button
             onMouseDown={() => { setDrawerOpen(false); router.push("/admin/leave-requests"); }}
-            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left transition-colors"
           >Leave Requests</button>
           <button
             onMouseDown={() => { setDrawerOpen(false); router.push("/admin/salary-generate"); }}
-            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left transition-colors"
           >Salary Generation</button>
           <button
             onMouseDown={() => { setDrawerOpen(false); router.push("/admin/reports"); }}
-            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left transition-colors"
           >Reports</button>
         </>
       )}
@@ -91,7 +100,7 @@ export default function Navigation() {
         <>
           <button
             onMouseDown={() => { setDrawerOpen(false); router.push("/dashboard"); }}
-            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left"
+            className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none focus:outline-none w-full text-left transition-colors"
           >Dashboard</button>
         </>
       )}
@@ -99,7 +108,7 @@ export default function Navigation() {
         <div className="relative" ref={accountRef} style={{zIndex: 60}}>
           <button
             onClick={() => setAccountOpen((v) => !v)}
-            className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm border border-gray-200"
             aria-haspopup="true"
             aria-expanded={accountOpen}
             tabIndex={0}
@@ -145,7 +154,7 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-blue-600">PeoplePulse HR</Link>
+            <Link href="/" className="text-2xl font-extrabold text-blue-600 tracking-tight">PeoplePulse HR</Link>
           </div>
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center space-x-4">

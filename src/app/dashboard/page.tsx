@@ -5,6 +5,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useUser } from "@/hooks/useUser";
 import { supabase } from "@/lib/supabaseClient";
 import Modal from "@/components/Modal";
+import { useRouter } from "next/navigation";
+import { FaUserCheck, FaCalendarPlus, FaFileInvoiceDollar, FaUserCircle } from 'react-icons/fa';
 
 interface Announcement {
   id: string;
@@ -34,7 +36,8 @@ const ALL_WIDGETS = [
 ];
 
 export default function DashboardPage() {
-  const { user, companyId, company, loading } = useUser();
+  const { user, companyId, company, loading, role } = useUser();
+  const router = useRouter();
   const [widgets, setWidgets] = useState<string[]>(DEFAULT_WIDGETS);
   const [showAddWidget, setShowAddWidget] = useState(false);
   const [attendance, setAttendance] = useState<{ present: number; absent: number }>({ present: 0, absent: 0 });
@@ -58,9 +61,14 @@ export default function DashboardPage() {
     address: ""
   });
 
-  // Move all useEffect hooks to the top
   useEffect(() => {
-    if (!user) return;
+    if (!loading && role === "admin") {
+      router.replace("/admin/dashboard");
+    }
+  }, [role, loading, router]);
+
+  useEffect(() => {
+    if (loading || !user) return;
     (async () => {
       const monthStart = new Date();
       monthStart.setDate(1);
@@ -74,10 +82,10 @@ export default function DashboardPage() {
       const absent = (data as AttendanceRow[] || []).filter((a) => a.status === "absent").length;
       setAttendance({ present, absent });
     })();
-  }, [user]);
+  }, [user, loading]);
 
   useEffect(() => {
-    if (!user) return;
+    if (loading || !user) return;
     (async () => {
       const { data } = await supabase
         .from("leave_balance")
@@ -94,9 +102,10 @@ export default function DashboardPage() {
         });
       }
     })();
-  }, [user]);
+  }, [user, loading]);
 
   useEffect(() => {
+    if (loading) return;
     (async () => {
       const { data } = await supabase
         .from("announcements")
@@ -106,9 +115,16 @@ export default function DashboardPage() {
         .limit(2);
       setAnnouncements((data as Announcement[]) || []);
     })();
-  }, []);
+  }, [loading]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  // Show loading spinner while user state is loading
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
 
   if (!company) {
     return (
@@ -177,10 +193,9 @@ export default function DashboardPage() {
     switch (key) {
       case "attendance":
         return (
-          <div className="bg-white rounded shadow p-6 flex flex-col gap-2 relative">
-            <WidgetMenu onRemove={() => handleRemoveWidget("attendance")} />
-            <h2 className="font-semibold text-lg mb-2">Attendance Summary</h2>
-            <div className="flex gap-6">
+          <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col gap-2 relative border border-gray-100">
+            <div className="flex items-center gap-2 mb-2"><FaUserCheck className="text-green-500 text-xl" /><h2 className="font-semibold text-xl">Attendance Summary</h2></div>
+            <div className="flex gap-6 items-center">
               <div className="text-green-600 font-bold text-2xl">{attendance.present}</div>
               <div className="text-gray-500">Present</div>
               <div className="text-red-600 font-bold text-2xl ml-6">{attendance.absent}</div>
@@ -190,9 +205,8 @@ export default function DashboardPage() {
         );
       case "leave-balance":
         return (
-          <div className="bg-white rounded shadow p-6 flex flex-col gap-2 relative">
-            <WidgetMenu onRemove={() => handleRemoveWidget("leave-balance")} />
-            <h2 className="font-semibold text-lg mb-2">Leave Balance</h2>
+          <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col gap-2 relative border border-gray-100">
+            <div className="flex items-center gap-2 mb-2"><FaCalendarPlus className="text-yellow-500 text-xl" /><h2 className="font-semibold text-xl">Leave Balance</h2></div>
             <div className="flex gap-6">
               <div className="text-blue-600 font-bold">Casual: {leaveBalance.casual}</div>
               <div className="text-yellow-600 font-bold">Sick: {leaveBalance.sick}</div>
@@ -202,32 +216,20 @@ export default function DashboardPage() {
         );
       case "announcements":
         return (
-          <div className="bg-white rounded shadow p-6 flex flex-col gap-2 relative">
-            <WidgetMenu onRemove={() => handleRemoveWidget("announcements")} />
-            <h2 className="font-semibold text-lg mb-2">Latest Announcements</h2>
-            {announcements.length === 0 ? (
-              <div className="text-gray-500">No announcements.</div>
-            ) : (
-              announcements.map((a) => (
-                <div key={a.id} className="mb-2">
-                  <div className="font-semibold">{a.title}</div>
-                  <div className="text-gray-600 text-sm">{a.content}</div>
-                  <div className="text-xs text-gray-400 mt-1">{new Date(a.created_at).toLocaleDateString()}</div>
-                </div>
-              ))
-            )}
+          <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col gap-2 relative border border-gray-100">
+            <div className="flex items-center gap-2 mb-2"><FaUserCircle className="text-blue-400 text-xl" /><h2 className="font-semibold text-xl">Latest Announcements</h2></div>
+            <div className="text-gray-500">{announcements.length === 0 ? 'No announcements.' : announcements.map(a => <div key={a.id}>{a.title}</div>)}</div>
           </div>
         );
       case "quick-actions":
         return (
-          <div className="bg-white rounded shadow p-6 flex flex-col gap-2 relative">
-            <WidgetMenu onRemove={() => handleRemoveWidget("quick-actions")} />
-            <h2 className="font-semibold text-lg mb-2">Quick Actions</h2>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/attendance" className="bg-green-100 text-green-800 px-3 py-1 rounded hover:bg-green-200">Check Attendance</Link>
-              <Link href="/leave" className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded hover:bg-yellow-200">Apply Leave</Link>
-              <Link href="/salary" className="bg-purple-100 text-purple-800 px-3 py-1 rounded hover:bg-purple-200">Download Salary Slip</Link>
-              <Link href="/profile" className="bg-blue-100 text-blue-800 px-3 py-1 rounded hover:bg-blue-200">View Profile</Link>
+          <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col gap-4 border border-gray-100">
+            <div className="flex items-center gap-2 mb-2"><FaFileInvoiceDollar className="text-purple-500 text-xl" /><h2 className="font-semibold text-xl">Quick Actions</h2></div>
+            <div className="flex flex-col gap-3">
+              <button className="bg-green-100 hover:bg-green-200 text-green-800 font-semibold py-2 px-4 rounded-lg transition text-left">Check Attendance</button>
+              <button className="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-semibold py-2 px-4 rounded-lg transition text-left">Apply Leave</button>
+              <button className="bg-purple-100 hover:bg-purple-200 text-purple-800 font-semibold py-2 px-4 rounded-lg transition text-left">Download Salary Slip</button>
+              <button className="bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-2 px-4 rounded-lg transition text-left">View Profile</button>
             </div>
           </div>
         );
@@ -265,175 +267,166 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center py-8 px-2">
-        <div className="w-full max-w-5xl mx-auto">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-2">
-            <h1 className="text-3xl font-bold text-center md:text-left">Welcome to PeoplePulse HR</h1>
-            <div className="flex gap-2 justify-center md:justify-end">
-              <button
-                className="bg-gray-200 text-gray-800 px-4 py-2 rounded font-semibold hover:bg-gray-300 transition"
-                onClick={() => setShowAddWidget(true)}
-              >
-                + Add Widget
-              </button>
-              <button
-                className="bg-blue-600 text-white px-5 py-2 rounded font-semibold hover:bg-blue-700 transition"
-                onClick={() => setShowAddEmployee(true)}
-              >
-                + Add Employee
-              </button>
-            </div>
+      <div className="min-h-screen bg-gray-50 py-8 px-2">
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-4xl font-extrabold text-gray-900 mb-2 text-center">Welcome to PeoplePulse HR</h1>
+          <div className="text-lg text-gray-500 mb-8 text-center">Shah Works</div>
+          <div className="flex justify-end gap-4 mb-6">
+            <button onClick={() => setShowAddWidget(true)} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg shadow-sm transition">+ Add Widget</button>
+            <button onClick={() => setShowAddEmployee(true)} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition">+ Add Employee</button>
           </div>
-          {company && <div className="text-center text-lg text-gray-600 mb-6">{company.company_name}</div>}
-          <Modal isOpen={showAddWidget} onClose={() => setShowAddWidget(false)} title="Add Widget">
-            <div className="space-y-4">
-              {availableWidgets.length === 0 ? (
-                <div className="text-gray-500 text-center">All widgets are already added.</div>
-              ) : (
-                availableWidgets.map(w => (
-                  <button
-                    key={w.key}
-                    className="w-full bg-blue-100 text-blue-800 px-4 py-2 rounded hover:bg-blue-200 font-semibold mb-2"
-                    onClick={() => handleAddWidget(w.key)}
-                  >
-                    {w.label}
-                  </button>
-                ))
-              )}
-            </div>
-          </Modal>
-          <Modal isOpen={showAddEmployee} onClose={() => { setShowAddEmployee(false); setAddEmpError(null); setAddEmpSuccess(null); }} title="Add Employee">
-            {!(company?.id || companyId) ? (
-              <div className="text-center text-gray-500 py-8">Loading company information...</div>
-            ) : (
-            <form onSubmit={handleAddEmployee} className="space-y-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  name="first_name"
-                  placeholder="First Name"
-                  value={empForm.first_name}
-                  onChange={handleEmpFormChange}
-                  className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
-                  required
-                />
-                <input
-                  type="text"
-                  name="last_name"
-                  placeholder="Last Name"
-                  value={empForm.last_name}
-                  onChange={handleEmpFormChange}
-                  className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
-                  required
-                />
-              </div>
-              <input
-                type="email"
-                name="email"
-                placeholder="Email"
-                value={empForm.email}
-                onChange={handleEmpFormChange}
-                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring"
-                required
-              />
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  name="employee_id"
-                  placeholder="Employee ID"
-                  value={empForm.employee_id}
-                  onChange={handleEmpFormChange}
-                  className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
-                  required
-                />
-                <input
-                  type="text"
-                  name="department"
-                  placeholder="Department"
-                  value={empForm.department}
-                  onChange={handleEmpFormChange}
-                  className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
-                  required
-                />
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  name="position"
-                  placeholder="Position"
-                  value={empForm.position}
-                  onChange={handleEmpFormChange}
-                  className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
-                  required
-                />
-                <input
-                  type="date"
-                  name="hire_date"
-                  placeholder="Hire Date"
-                  value={empForm.hire_date}
-                  onChange={handleEmpFormChange}
-                  className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
-                  required
-                />
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  name="salary"
-                  placeholder="Salary"
-                  value={empForm.salary}
-                  onChange={handleEmpFormChange}
-                  className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
-                  required
-                  min="0"
-                  step="0.01"
-                />
-                <select
-                  name="role"
-                  value={empForm.role}
-                  onChange={handleEmpFormChange}
-                  className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
-                  required
-                >
-                  <option value="employee">Employee</option>
-                  <option value="hr">HR</option>
-                </select>
-              </div>
-              <input
-                type="tel"
-                name="phone"
-                placeholder="Phone (optional)"
-                value={empForm.phone}
-                onChange={handleEmpFormChange}
-                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring"
-              />
-              <input
-                type="text"
-                name="address"
-                placeholder="Address (optional)"
-                value={empForm.address}
-                onChange={handleEmpFormChange}
-                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring"
-              />
-              {addEmpError && <div className="text-red-600 text-sm bg-red-50 p-2 rounded">{addEmpError}</div>}
-              {addEmpSuccess && <div className="text-green-700 text-sm bg-green-50 p-2 rounded">{addEmpSuccess}</div>}
-              <button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition font-semibold"
-                disabled={addEmpLoading || !(company?.id || companyId)}
-              >
-                {addEmpLoading ? "Inviting..." : "Invite Employee"}
-              </button>
-            </form>
-            )}
-          </Modal>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             {widgets.map((key) => (
               <div key={key}>{renderWidget(key)}</div>
             ))}
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Add more modern widgets or sections here if needed */}
+          </div>
         </div>
       </div>
+      <Modal isOpen={showAddWidget} onClose={() => setShowAddWidget(false)} title="Add Widget">
+        <div className="space-y-4">
+          {availableWidgets.length === 0 ? (
+            <div className="text-gray-500 text-center">All widgets are already added.</div>
+          ) : (
+            availableWidgets.map(w => (
+              <button
+                key={w.key}
+                className="w-full bg-blue-100 text-blue-800 px-4 py-2 rounded hover:bg-blue-200 font-semibold mb-2"
+                onClick={() => handleAddWidget(w.key)}
+              >
+                {w.label}
+              </button>
+            ))
+          )}
+        </div>
+      </Modal>
+      <Modal isOpen={showAddEmployee} onClose={() => { setShowAddEmployee(false); setAddEmpError(null); setAddEmpSuccess(null); }} title="Add Employee">
+        {!(company?.id || companyId) ? (
+          <div className="text-center text-gray-500 py-8">Loading company information...</div>
+        ) : (
+        <form onSubmit={handleAddEmployee} className="space-y-4">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              name="first_name"
+              placeholder="First Name"
+              value={empForm.first_name}
+              onChange={handleEmpFormChange}
+              className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
+              required
+            />
+            <input
+              type="text"
+              name="last_name"
+              placeholder="Last Name"
+              value={empForm.last_name}
+              onChange={handleEmpFormChange}
+              className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
+              required
+            />
+          </div>
+          <input
+            type="email"
+            name="email"
+            placeholder="Email"
+            value={empForm.email}
+            onChange={handleEmpFormChange}
+            className="w-full px-3 py-2 border rounded focus:outline-none focus:ring"
+            required
+          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              name="employee_id"
+              placeholder="Employee ID"
+              value={empForm.employee_id}
+              onChange={handleEmpFormChange}
+              className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
+              required
+            />
+            <input
+              type="text"
+              name="department"
+              placeholder="Department"
+              value={empForm.department}
+              onChange={handleEmpFormChange}
+              className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
+              required
+            />
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              name="position"
+              placeholder="Position"
+              value={empForm.position}
+              onChange={handleEmpFormChange}
+              className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
+              required
+            />
+            <input
+              type="date"
+              name="hire_date"
+              placeholder="Hire Date"
+              value={empForm.hire_date}
+              onChange={handleEmpFormChange}
+              className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
+              required
+            />
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              name="salary"
+              placeholder="Salary"
+              value={empForm.salary}
+              onChange={handleEmpFormChange}
+              className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
+              required
+              min="0"
+              step="0.01"
+            />
+            <select
+              name="role"
+              value={empForm.role}
+              onChange={handleEmpFormChange}
+              className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring"
+              required
+            >
+              <option value="employee">Employee</option>
+              <option value="hr">HR</option>
+            </select>
+          </div>
+          <input
+            type="tel"
+            name="phone"
+            placeholder="Phone (optional)"
+            value={empForm.phone}
+            onChange={handleEmpFormChange}
+            className="w-full px-3 py-2 border rounded focus:outline-none focus:ring"
+          />
+          <input
+            type="text"
+            name="address"
+            placeholder="Address (optional)"
+            value={empForm.address}
+            onChange={handleEmpFormChange}
+            className="w-full px-3 py-2 border rounded focus:outline-none focus:ring"
+          />
+          {addEmpError && <div className="text-red-600 text-sm bg-red-50 p-2 rounded">{addEmpError}</div>}
+          {addEmpSuccess && <div className="text-green-700 text-sm bg-green-50 p-2 rounded">{addEmpSuccess}</div>}
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition font-semibold"
+            disabled={addEmpLoading || !(company?.id || companyId)}
+          >
+            {addEmpLoading ? "Inviting..." : "Invite Employee"}
+          </button>
+        </form>
+        )}
+      </Modal>
     </ProtectedRoute>
   );
 }

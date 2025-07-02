@@ -1,6 +1,5 @@
 "use client";
-import React from "react";
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -12,14 +11,13 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
-
-interface DatabaseError {
-  message: string;
-  code?: string;
-  details?: string;
-}
+import { useUser } from "@/hooks/useUser";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
+  const { user, loading: userLoading } = useUser();
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -27,7 +25,6 @@ export default function RegisterPage() {
     org: ""
   });
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -37,8 +34,16 @@ export default function RegisterPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [snackbar, setSnackbar] = useState<{open: boolean, message: string, severity: 'success'|'error'|'info'}>({open: false, message: '', severity: 'success'});
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!userLoading && user) {
+      setError("You are already logged in. Registration is only for new companies. Redirecting to dashboard...");
+      setTimeout(() => router.replace("/dashboard"), 2000);
+    }
+  }, [user, userLoading, router]);
+
   // Cooldown timer for resend button
-  React.useEffect(() => {
+  useEffect(() => {
     if (resendCooldown > 0) {
       const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
       return () => clearTimeout(timer);
@@ -56,7 +61,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     if (form.password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError("Passwords do not match. Please re-enter your password.");
       setLoading(false);
       return;
     }
@@ -76,7 +81,9 @@ export default function RegisterPage() {
       });
 
       if (signUpError) {
-        throw signUpError;
+        setError(`Registration failed: ${signUpError.message}`);
+        setLoading(false);
+        return;
       }
 
       if (data.user) {
@@ -85,11 +92,13 @@ export default function RegisterPage() {
         if (typeof window !== "undefined") {
           localStorage.setItem("admin_email", form.email);
         }
+      } else {
+        setError("Registration failed: No user returned from Supabase. Please try again.");
       }
     } catch (err: unknown) {
-      const error = err as DatabaseError;
-      setError(error.message);
-      setSnackbar({open: true, message: error.message, severity: 'error'});
+      const error = err as { message?: string };
+      setError(`Unexpected error: ${error.message || 'Unknown error occurred.'}`);
+      setSnackbar({open: true, message: error.message || 'Unknown error occurred.', severity: 'error'});
     } finally {
       setLoading(false);
     }
